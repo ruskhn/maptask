@@ -1,0 +1,42 @@
+{
+  "name": "maptaskrusguru",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@hebilicious/vue-query-nuxt": "^0.3.0",
+    "@pinia/nuxt": "^0.5.2",
+    "@tanstack/vue-query": "^5.51.21",
+    "@tanstack/vue-table": "^8.20.2",
+    "@unovis/ts": "^1.4.3",
+    "@unovis/vue": "^1.4.3",
+    "@vee-validate/zod": "^4.13.2",
+    "@vueuse/core": "^10.11.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "embla-carousel-vue": "^8.1.8",
+    "lucide-vue-next": "^0.424.0",
+    "nuxt": "^3.12.4",
+    "pinia": "^2.2.0",
+    "radix-vue": "^1.9.2",
+    "shadcn-nuxt": "^0.10.4",
+    "tailwind-merge": "^2.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "vee-validate": "^4.13.2",
+    "vue": "^3.4.35",
+    "vue-sonner": "^1.1.4",
+    "vue-yandex-maps": "^2.1.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@nuxtjs/color-mode": "^3.4.2",
+    "@nuxtjs/tailwindcss": "^6.12.1",
+    "typescript": "^5.5.4"
+  }
+}
