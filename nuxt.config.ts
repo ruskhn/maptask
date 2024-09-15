@@ -31,5 +31,6 @@ export default defineNuxtConfig({
   ssr: false,
   yandexMaps: {
     apikey: import.meta.env.YANDEX_MAPS_API_KEY,
+    lang: "en_US",
   },
 });
