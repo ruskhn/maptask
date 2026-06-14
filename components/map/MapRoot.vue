@@ -63,6 +63,7 @@ const location = ref<YMapLocationRequest>({
 
 const newTaskMarker = ref<MapTask | null>(null);
 const hoveredPinId = ref<string | null>(null);
+const suppressMapClick = ref(false);
 
 const taskMarkers = computed<MapTask[]>(() => [
   ...props.tasks,
@@ -116,7 +117,16 @@ const mountMarker = (
   });
   app.mount(el);
 
-  if (onClick) el.addEventListener("click", onClick as () => void);
+  if (onClick) {
+    el.addEventListener("click", (event) => {
+      event.stopPropagation();
+      suppressMapClick.value = true;
+      (onClick as () => void)();
+      requestAnimationFrame(() => {
+        suppressMapClick.value = false;
+      });
+    });
+  }
   if (onMouseover) el.addEventListener("mouseover", onMouseover as () => void);
   if (onMouseleave) el.addEventListener("mouseleave", onMouseleave as () => void);
 
@@ -152,7 +162,12 @@ const syncMarkers = () => {
       {
         category: task.category,
         priority: task.priority,
-        onClick: () => taskStore.selectTask(task),
+        onClick: () => {
+          if (task.type === "new") return;
+          newTaskMarker.value = null;
+          dialogStore.closeDialog(Dialogs.NewTask);
+          taskStore.selectTask(task);
+        },
         onMouseover: () => {
           hoveredPinId.value = key;
         },
@@ -220,6 +235,8 @@ const adjustMapToMarker = (coords: number[]) => {
 };
 
 const handleMapClick = (_: unknown, event: DomEvent) => {
+  if (suppressMapClick.value) return;
+
   taskStore.deselectTask();
   newTaskMarker.value = {
     coordinates: event.coordinates,

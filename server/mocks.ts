@@ -105,13 +105,5 @@ export const EMPLOYEE_LIST = [
     email: "rk@email.com",
     coordinates: [-110.68011211907145, 46.771022411558626],
     avatar: "/images/logo.png",
-  },
-  {
-    id: "202",
-    firstName: "Alex",
-    lastName: "Russo",
-    email: "alex@russo.com",
-    coordinates: [-122.71763861539273, 45.51025144791064],
-    avatar: "/avatars/03.png",
-  },
+  }
 ];
