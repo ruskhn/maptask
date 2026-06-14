@@ -115,10 +115,8 @@ export default defineEventHandler(async (event) => {
   const { yandexMapsApiKey } = useRuntimeConfig();
   const { geocode } = getQuery(event);
 
-  console.log("geo", geocode);
-
   const { response } = await $fetch<GeoCoderResponse>(
-    `https://geocode-maps.yandex.ru/1.x/?apikey=${yandexMapsApiKey}&geocode=${geocode}&lang=en_US&format=json`,
+    `https://geocode-maps.yandex.ru/v1/?apikey=${yandexMapsApiKey}&geocode=${geocode}&lang=en_US&format=json`,
     { method: "GET" }
   );
 

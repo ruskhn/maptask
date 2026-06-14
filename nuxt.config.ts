@@ -22,7 +22,7 @@ export default defineNuxtConfig({
     classSuffix: "",
   },
   runtimeConfig: {
-    yandexMapsApiKey: import.meta.env.YANDEX_MAPS_API_KEY,
+    yandexGeocoderApiKey: import.meta.env.YANDEX_GEOCODER_API_KEY,
   },
   shadcn: {
     prefix: "",
@@ -30,7 +30,7 @@ export default defineNuxtConfig({
   },
   ssr: false,
   yandexMaps: {
-    apikey: import.meta.env.YANDEX_MAPS_API_KEY,
+    apikey: import.meta.env.YANDEX_JS_API_KEY,
     lang: "en_US",
   },
 });

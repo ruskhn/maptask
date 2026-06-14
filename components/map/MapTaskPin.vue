@@ -7,7 +7,26 @@ type MapPinProps = {
   category?: CategoryValue;
 };
 
-defineProps<MapPinProps>();
+const props = defineProps<MapPinProps>();
+const uid = useId();
+
+const blurFilterId = `${uid}-blur`;
+const shadowFilterId = `${uid}-shadow`;
+
+const priorityFill = computed(() => {
+  switch (props.priority?.name) {
+    case "Low":
+      return "#22c55e";
+    case "Medium":
+      return "#eab308";
+    case "High":
+      return "#ef4444";
+    case "Critical":
+      return "#dc2626";
+    default:
+      return "#08080A";
+  }
+});
 </script>
 
 <template>
@@ -45,7 +64,7 @@ defineProps<MapPinProps>();
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <g filter="url(#filter0_f_6_2)">
+        <g :filter="`url(#${blurFilterId})`">
           <ellipse
             cx="26"
             cy="53.5"
@@ -55,12 +74,12 @@ defineProps<MapPinProps>();
             fill-opacity="0.2"
           />
         </g>
-        <g filter="url(#filter1_d_6_2)">
+        <g :filter="`url(#${shadowFilterId})`">
           <path
             fill-rule="evenodd"
             clip-rule="evenodd"
             d="M26 4C37.598 4 47 13.402 47 25C47 33.8926 41.4727 41.4942 33.6663 44.5567L27.1961 53.4007C27.0612 53.5858 26.8821 53.7369 26.6739 53.8412C26.4657 53.9455 26.2346 54 26 54C25.7654 54 25.5343 53.9455 25.3261 53.8412C25.1179 53.7369 24.9388 53.5858 24.8039 53.4007L18.3337 44.5567C10.5273 41.4941 5 33.8926 5 25C5 13.402 14.402 4 26 4Z"
-            :class="['fill-current', priority?.color]"
+            :fill="priorityFill"
           />
         </g>
         <path
@@ -69,7 +88,7 @@ defineProps<MapPinProps>();
         />
         <defs>
           <filter
-            id="filter0_f_6_2"
+            :id="blurFilterId"
             x="17"
             y="49"
             width="18"
@@ -84,13 +103,10 @@ defineProps<MapPinProps>();
               in2="BackgroundImageFix"
               result="shape"
             />
-            <feGaussianBlur
-              stdDeviation="1"
-              result="effect1_foregroundBlur_6_2"
-            />
+            <feGaussianBlur stdDeviation="1" result="effect1_foregroundBlur" />
           </filter>
           <filter
-            id="filter1_d_6_2"
+            :id="shadowFilterId"
             x="0"
             y="0"
             width="52"
@@ -115,12 +131,12 @@ defineProps<MapPinProps>();
             <feBlend
               mode="normal"
               in2="BackgroundImageFix"
-              result="effect1_dropShadow_6_2"
+              result="effect1_dropShadow"
             />
             <feBlend
               mode="normal"
               in="SourceGraphic"
-              in2="effect1_dropShadow_6_2"
+              in2="effect1_dropShadow"
               result="shape"
             />
           </filter>

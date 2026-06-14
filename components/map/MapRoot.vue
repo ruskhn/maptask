@@ -1,23 +1,37 @@
 <script setup lang="ts">
+import { createApp, h, type Component } from "vue";
 import {
   YandexMap,
   YandexMapDefaultFeaturesLayer,
   YandexMapDefaultSchemeLayer,
-  YandexMapMarker,
   YandexMapListener,
-  type YandexMapMarkerCustomProps,
 } from "vue-yandex-maps";
-import type { TaskMapItem } from "../task/TaskMapListItem.vue";
 import type {
   YMap,
+  YMapMarker,
   BehaviorType,
   YMapLocationRequest,
   DomEvent,
+  LngLat,
+  YMapMarkerProps,
 } from "@yandex/ymaps3-types";
+import type { CategoryValue, PriorityValue } from "~/utils/constants";
 import Logo from "~/components/ui/logo.vue";
+import MapTaskPin from "~/components/map/MapTaskPin.vue";
+import MapEmployeePin from "~/components/map/MapEmployeePin.vue";
+import MapHelicopter from "~/components/map/MapHelicopter.vue";
+
+type MapTask = {
+  id?: string;
+  coordinates: LngLat;
+  category?: CategoryValue;
+  priority?: PriorityValue;
+  type?: "new";
+  onDragEnd?: (coords: LngLat) => void;
+};
 
 type TaskMapList = {
-  tasks?: TaskMapItem[];
+  tasks?: MapTask[];
   employees?: Array<{
     id: string;
     avatar: string;
@@ -26,8 +40,8 @@ type TaskMapList = {
 };
 
 const props = withDefaults(defineProps<TaskMapList>(), {
-  tasks: [],
-  employees: [],
+  tasks: () => [],
+  employees: () => [],
 });
 
 const dialogStore = useDialogStore();
@@ -47,13 +61,128 @@ const location = ref<YMapLocationRequest>({
   zoom: 3,
 });
 
-const newTaskMarker = ref<YandexMapMarkerCustomProps | null>(null);
-const hoveredPinId = ref<number | null>(null);
+const newTaskMarker = ref<MapTask | null>(null);
+const hoveredPinId = ref<string | null>(null);
 
-const taskMarkers = computed(() => [
-  ...unref(props.tasks || []),
+const taskMarkers = computed<MapTask[]>(() => [
+  ...props.tasks,
   ...(newTaskMarker.value ? [newTaskMarker.value] : []),
 ]);
+
+const getMarkerKey = (task: MapTask) => task.id ?? "new";
+
+const getMarkerSettings = (
+  task: MapTask,
+  zIndex: number
+): YMapMarkerProps => {
+  const settings: YMapMarkerProps = {
+    coordinates: task.coordinates,
+    zIndex,
+  };
+
+  if (task.id) settings.id = String(task.id);
+
+  if (task.type === "new") {
+    settings.draggable = true;
+    if (task.onDragEnd) settings.onDragEnd = task.onDragEnd;
+  }
+
+  return settings;
+};
+
+type MountedMarker = {
+  key: string;
+  marker: YMapMarker;
+  app: ReturnType<typeof createApp>;
+};
+
+const mountedMarkers = shallowRef<MountedMarker[]>([]);
+
+const mountMarker = (
+  key: string,
+  settings: YMapMarkerProps,
+  component: Component,
+  componentProps: Record<string, unknown> = {}
+) => {
+  if (!map.value || typeof ymaps3 === "undefined") return null;
+
+  const el = document.createElement("div");
+  el.style.transform = "translate(-50%, -100%)";
+
+  const { onClick, onMouseover, onMouseleave, ...pinProps } = componentProps;
+
+  const app = createApp({
+    render: () => h(component, pinProps),
+  });
+  app.mount(el);
+
+  if (onClick) el.addEventListener("click", onClick as () => void);
+  if (onMouseover) el.addEventListener("mouseover", onMouseover as () => void);
+  if (onMouseleave) el.addEventListener("mouseleave", onMouseleave as () => void);
+
+  const marker = new ymaps3.YMapMarker(settings, el);
+  map.value.addChild(marker);
+
+  return { key, marker, app };
+};
+
+const clearMarkers = () => {
+  if (!map.value) return;
+
+  for (const { marker, app } of mountedMarkers.value) {
+    map.value.removeChild(marker);
+    app.unmount();
+  }
+
+  mountedMarkers.value = [];
+};
+
+const syncMarkers = () => {
+  if (!map.value || typeof ymaps3 === "undefined") return;
+
+  clearMarkers();
+  const next: MountedMarker[] = [];
+
+  for (const task of taskMarkers.value) {
+    const key = getMarkerKey(task);
+    const mounted = mountMarker(
+      key,
+      getMarkerSettings(task, hoveredPinId.value === key ? 1 : 0),
+      MapTaskPin,
+      {
+        category: task.category,
+        priority: task.priority,
+        onClick: () => taskStore.selectTask(task),
+        onMouseover: () => {
+          hoveredPinId.value = key;
+        },
+        onMouseleave: () => {
+          hoveredPinId.value = null;
+        },
+      }
+    );
+    if (mounted) next.push(mounted);
+  }
+
+  for (const employee of props.employees) {
+    const mounted = mountMarker(
+      `employee-${employee.id}`,
+      { coordinates: employee.coordinates as LngLat, id: employee.id },
+      MapEmployeePin,
+      { id: employee.id, avatar: employee.avatar }
+    );
+    if (mounted) next.push(mounted);
+  }
+
+  const helicopter = mountMarker(
+    "helicopter",
+    { coordinates: [-150.61443832539757, 61.553380435810766], id: "helicopter" },
+    MapHelicopter
+  );
+  if (helicopter) next.push(helicopter);
+
+  mountedMarkers.value = next;
+};
 
 const adjustMapToMarker = (coords: number[]) => {
   const bounds = map.value?.bounds;
@@ -94,20 +223,11 @@ const handleMapClick = (_: unknown, event: DomEvent) => {
   taskStore.deselectTask();
   newTaskMarker.value = {
     coordinates: event.coordinates,
-    draggable: true,
     type: "new",
     onDragEnd: (coords) =>
       dialogStore.setDialogData(Dialogs.NewTask, { coordinates: coords }),
   };
   dialogStore.openDialog(Dialogs.NewTask, { coordinates: event.coordinates });
-};
-
-const handleMouseOver = (index: number) => {
-  hoveredPinId.value = index;
-};
-
-const handleMouseLeave = () => {
-  hoveredPinId.value = null;
 };
 
 watch(
@@ -123,6 +243,12 @@ watch(
     if (!isOpened) newTaskMarker.value = null;
   }
 );
+
+watch([map, taskMarkers, () => props.employees, hoveredPinId], syncMarkers, {
+  deep: true,
+});
+
+onBeforeUnmount(clearMarkers);
 </script>
 
 <template>
@@ -136,47 +262,9 @@ watch(
     width="100%"
     height="calc(100vh - 64px)"
   >
-    <yandex-map-default-features-layer />
-
-    <template v-for="(taskMarker, index) in taskMarkers" :key="index">
-      <yandex-map-marker
-        :settings="{ ...taskMarker, zIndex: hoveredPinId === index ? 1 : 0 }"
-        position="left-center top"
-      >
-        <MapTaskPin
-          :category="taskMarker.category"
-          :priority="taskMarker.priority"
-          @click="taskStore.selectTask(taskMarker)"
-          @mouseover="handleMouseOver(index)"
-          @mouseleave="handleMouseLeave"
-        />
-        <TaskMapListItem
-          v-if="taskMarker.type !== 'new'"
-          v-show="hoveredPinId === index"
-          :task="taskMarker"
-          class="absolute z-20 w-full min-w-96 -top-40 -left-44 animate-in fade-in zoom-in"
-        />
-      </yandex-map-marker>
-    </template>
-
-    <template v-for="employee in props.employees" :key="employee.id">
-      <yandex-map-marker
-        :settings="{ coordinates: employee.coordinates }"
-        position="left-center top"
-      >
-        <MapEmployeePin :id="employee.id" :avatar="employee.avatar" />
-      </yandex-map-marker>
-    </template>
-
-    <yandex-map-marker
-      :settings="{ coordinates: [-150.61443832539757, 61.553380435810766] }"
-      position="left-center center"
-    >
-      <MapHelicopter />
-    </yandex-map-marker>
-
     <yandex-map-default-scheme-layer :settings="{ theme: $colorMode.value }" />
-    <yandex-map-listener :settings="{ onDblClick: handleMapClick }" />
+    <yandex-map-default-features-layer />
+    <yandex-map-listener v-if="map" :settings="{ onClick: handleMapClick }" />
   </yandex-map>
 
   <div
